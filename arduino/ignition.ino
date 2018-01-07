@@ -6,7 +6,7 @@
    - IGN2/Start     Starts the engine
 */
 
-// INPUT/OUTPUT PINS
+// INPUT/LOW PINS
 int IGN1 = 13;
 int IGN2 = 12;
 int SWITCH = 11;
@@ -18,34 +18,40 @@ int switchDelay = 200;
 int switchValue = 0;
 
 // the setup function runs once when you press reset or power the board
-void setup() {
-  // initialize the output pins.
+void ignitionsetup() {
+  // initialize the LOW pins.
   pinMode(IGN1, OUTPUT);
-  pinMode(IGN2, OUTPUT);
-  pinMode(SWITCH, INPUT);
+  // pinMode(IGN2, LOW);
+  // pinMode(SWITCH, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
 }
 
-void turnOn() {
+void turnOnIgnition() {
   digitalWrite(IGN1, HIGH);
-  digitalWrite(IGN2, HIGH);
-  delay(switchDelay);
-  digitalWrite(IGN2, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
+  // digitalWrite(IGN2, HIGH);
+  // delay(switchDelay);
+  // digitalWrite(IGN2, LOW);
 }
 
-void turnOff() {
+void turnOffIgnition() {
   digitalWrite(IGN1, LOW);
-  digitalWrite(IGN2, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
+  // digitalWrite(IGN2, LOW);
 }
 
-// the loop function runs over and over again forever
-void loop() {
+void ignitionLoopTest() {
   // TODO: Add debouncer
-  switchValue = digitalRead(SWITCH);
+  // switchValue = digitalRead(SWITCH);
+  // switchValue = 1;
   // If the switch is on, turn the ignition on
   if (switchValue == 1) {
-    turnOn();
+    turnOnIgnition();
+    switchValue = 0;
   // Else turn it off
   } else {
-    turnOff();
+    turnOffIgnition();
+    switchValue = 1;
   }
+  delay(3000);
 }
