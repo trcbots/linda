@@ -1,6 +1,4 @@
-#define __ASSERT_USE_STDERR
-#include <assert.h>
-#include <SabertoothSimplified.h>
+#include "motor_control.ino"
 
 #define HALT_STATE 0
 #define COAST_STATE 1
@@ -32,38 +30,16 @@
 #define NEUTRAL_GEAR_POSITION 500
 #define DRIVE_GEAR_POSITION 700
 
-Servo throtte_servo;
-
-float get_pwm_duty_cycle(pwm_pin)
+float get_pwm_duty_cycle(int pwm_pin)
 {
-    unsigned long highTime pulseIn(inputPin, HIGH);
-    unsigned long lowTime pulseIn(inputPin, LOW);
+    unsigned long highTime = pulseIn(pwm_pin, HIGH);
+    unsigned long lowTime = pulseIn(pwm_pin, LOW);
     unsigned long cycleTime = highTime + lowTime;
     return (float)highTime / float(cycleTime);
 }
 
 class Linda
 {
-
-  private:
-    int currentStateID;
-    long lastCommandTimestamp;
-    double theta;
-    double x_velocity;
-    int current_gear_position;
-    bool ai_enabled;
-    bool main_relay_on;
-    bool engine_currently_running;
-
-
-    *MotorInterface sabertooth_60A;
-    *MotorInterface sabertooth_32A;
-
-    *MotorController brake_motor;
-    *MotorController gear_motor;
-    *MotorController throttle_motor;
-    *MotorController steering_motor;
-
   public:
     Linda()
     {
@@ -86,13 +62,13 @@ class Linda
         Serial1.begin(9600);
         Serial2.begin(9600);
 
-        sabertooth_60A = new ST(Serial1);
-        sabertooth_32A = new ST(Serial2);
+        sabertooth_60A = new SabertoothSimplified(Serial1);
+        sabertooth_32A = new SabertoothSimplified(Serial2);
         throtte_servo.attach(THROTTLE_SERVO_PIN);
 
-        brake_motor = new MotorController(sabertooth_32A, 1);
-        gear_motor = new MotorController(sabertooth_32A, 2);
-        steer_motor = new MotorController(sabertooth_60A, 1);
+        brake_motor = new MotorController(sabertooth_32A, 1, A3, 100, 1023);
+        gear_motor = new MotorController(sabertooth_32A, 2, A4, 100, 1023);
+        steer_motor = new MotorController(sabertooth_60A, 1, A5, 100, 100);
     }
 
     void startEngine()
@@ -127,9 +103,10 @@ class Linda
 
     int calculate_gear_pos(double x_velocity)
     {
+        int gear_position = -1;
         if (getcurrentStateID() >= ENGINE_START_STATE)
         {
-            if (x_velocity => 0)
+            if (x_velocity >= 0)
             {
                 gear_position = DRIVE_GEAR_POSITION;
             }
@@ -194,8 +171,6 @@ class Linda
 
     void set_current_state_ID(int newStateID)
     {
-        assert(newStateID <= 6);
-
         switch (newStateID)
         {
         case IGNITION_STATE:
@@ -212,8 +187,9 @@ class Linda
                 }
                 else
                 {
+                    gear_motor->SetTargetPosition(calculate_gear_pos(x_velocity));
+                    current_gear_position = PARK_GEAR_POSITION;
                     digitalWrite(IGNITION_PIN, HIGH);
-                    gear_position = 0;
                     main_relay_on = 1;
                     //Serial.println("Delaying for 5...");
                 }
@@ -265,4 +241,24 @@ class Linda
         throttle_command = constrain(throttle_command, 0, 10);
         throtte_servo.write(throttle_command);
     }
+    
+private:
+    int currentStateID;
+    long lastCommandTimestamp;
+    double theta;
+    double x_velocity;
+    int current_gear_position;
+    bool ai_enabled;
+    bool main_relay_on;
+    bool engine_currently_running;
+    Servo throtte_servo;
+
+    SabertoothSimplified* sabertooth_60A;
+    SabertoothSimplified* sabertooth_32A;
+
+    MotorController* brake_motor;
+    MotorController* gear_motor;
+    MotorController* throttle_motor;
+    MotorController* steer_motor;
+    
 };
