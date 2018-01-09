@@ -1,140 +1,145 @@
+#define MAX_CHARS 24
+#define MESSAGE_START 0x23
+#define MESSAGE_END   0x21
 
-#define MAX_CHARS       24;
-#define MESSAGE_START 0x23;
-#define MESSAGE_END   0x13;
+#define NO_MESSAGE -1
 
 // Message Format:
-// char 0x23 '#'
+// char MESSAGE_START '#'
 // char message type
 // char 0x2c ','
 // char[9] data1
 // char 0x2c ','
 // char[9] data2
-// char 0x13 'CR'
+// char MESSAGE_END '!'
 
-class SerialCommand()
+class SerialCommand
 {
     public:
-        SerialInterface()
+        int message_type;
+        double message_data1;
+        double message_data2;
+            
+        SerialCommand()
         {
-            Serial.begin(115200);
-            SWSerial.begin(115200);
-            Serial.setTimeout(50);
+            Serial.begin(9600);
+            while (! Serial) {
+              ; // wait for serial port to connect. Needed for native USB port only
+            }
+            //Serial.setTimeout(100);
+            reset();
         }
 
-        parseCommand()
+        void ReadData()
         {
-            int message_id = -1;
-            int setpoint = -1;
-            int k, q, i;
-
-            if (Serial.available() > 0)
+            if (Serial.available() <= 0)
             {
-                read_byte = Serial.read();
-                // maybe: delay(10);
+              return;
+            }
+            
+            int read_byte = Serial.read();
+            //delay(10);
 
-                if (read_byte == MESSAGE_END)
-                { //  follow the false code until you get a CR - this packs inString with the complete string
-                    if ( cmd_string[0] != MESSAGE_START ) {
-                        reset();
-                        return;
-                    }
-
-                    command_message_type = cmd_string[0];
-
-                    for (int p = 1; p < MAX_CHARS; p++)
-                    {
-                        next_char = cmd_string[p]; // get the next Char
-                        q++;
-
-                        if ( ! isDigit(next_char) ) {
-                            if ( nextChar == 44 ) {
-                                
-                            }
-                            reset();
-                        }
-                         || nextChar == 13)
-                        { // if it's a comma (ASCII 44) then bail out
-                            break;
-                        }
-
-                        arg0_String[k] = nextChar; // start packing the arg0_String
-
-                        k++; // increment the pointer to arg1_String
-                    }
-
-                    /*******************************************************************************************/
-                    // Now we process the arg1_String  checking whether we are b1 or b,1 format
-                    /*******************************************************************************************/
-
-                    k = 0; //reset the string pointer
-
-                    for (int p = q + 1; p < 34; p++)
-                    { // Now start at the location after the 2nd comma and strip out the arg2_String
-
-                        nextChar = inString[p]; // get the next Char
-
-                        q++;
-
-                        if (nextChar == 44 || nextChar == 13)
-                        { // if it's a comma (ASCII 44) then bail out
-
-                            break;
-                        }
-
-                        arg1_String[k] = nextChar; // start packing the arg1_String
-
-                        k++; // increment the pointer to arg2_String
-                    }
-
-                    /*******************************************************************************************/
-                    // Now we process the arg2_String in the same way
-                    /*******************************************************************************************/
-
-                    k = 0; //reset the string pointer
-
-                    for (int p = q + 1; p < 34; p++)
-                    { // Now start at the location after the 2nd comma and strip out the arg2_String
-
-                        nextChar = inString[p]; // get the next Char
-
-                        q++;
-
-                        if (nextChar == 44 || nextChar == 13)
-                        { // if it's a comma (ASCII 44) then bail out
-
-                            break;
-                        }
-
-                        arg2_String[k] = nextChar; // start packing the arg1_String
-
-                        k++; // increment the pointer to arg2_String
-                    }
-                
-
-                    // Parse values, Set command ready
-
-
-                    reset_string();
-                    i = 0;
-
-                    return;
-                } else {
-                    dataReady = false; // No CR seen yet so put digits into array
-                                    //    Serial.print(inByte);
-                
-                    cmd_string[i] = inByte;
-                    i++;
+            if (! reading_message) {
+                if (read_byte == MESSAGE_START) {
+                    reading_message = true;
+                    Serial.println("reading_message = true");
                 }
+                return;
+            }
+
+            if (read_byte != MESSAGE_END)
+            {
+                cmd_string += (char)read_byte;
+                curr_pos++;
+                
+                Serial.print("cmd_string = ");
+                Serial.println(cmd_string);
+
+                if ( curr_pos >= MAX_CHARS ) {
+                    reset();
+                }
+                return;
+            }
+
+            // Once we receive our MESSAGE_END, then
+            // validate we have a valid message packet
+            if ( ! have_valid_message() ) {
+                Serial.print("INVALID MSG!");
+                reset();
+                return;
+            }
+
+            message_type = cmd_string.substring(0).toInt();
+            bool found = false;
+            char p = 2;
+            for (; p < MAX_CHARS; p++)
+            {
+                if ( ! ( isDigit( cmd_string.charAt(p) ) || cmd_string.charAt(p) == '.' ) ) {
+                    // If the char is a comma, then parse the data we have
+                    if ( cmd_string.charAt(p) == 0x2c ) {
+                        message_data1 = cmd_string.substring(2, p).toFloat();
+                        found = true;
+                        break;
+                    }
+                    // else we bail out
+                    Serial.print("INVALID 1!");
+                    break;
+                }
+            }
+
+            if ( ! found ) {
+                Serial.print("INVALID 2!");
+                reset();
+                return;
+            }
+
+            found = false;
+            for (int q = p + 1; q < MAX_CHARS; q++)
+            {
+                if ( ! ( isDigit( cmd_string.charAt(q) ) || cmd_string.charAt(q) == '.' ) ) {
+                    // If the char is a comma, then parse the data we have
+                    if ( cmd_string.charAt(q) == NULL ) {
+                        message_data2 = cmd_string.substring(p + 1, q).toFloat();
+                        found = true;
+                        break;
+                    }
+                    // else we bail out
+                    Serial.print("INVALID 3!");
+                    break;
+                }
+            }
+
+            if ( ! found ) {
+                Serial.print("INVALID 4!");
+                reset();
+                return;
+            }
         }
 
+        void reset() {
+            Serial.println("reset state");
+            cmd_string = "";
+            reading_message = false;
+            curr_pos = 0;
+            message_type = -1;
+            message_data1 = -1;
+            message_data2 = -1;
+        }
+            
         private:
-          char cmd_string[MAX_CHARS];
+            String cmd_string;
+            int curr_pos;
+            bool reading_message;
 
-         void reset_string() {
-             for (int j = 0; j < MAX_CHARS; j++)
-             {
-                 cmd_string[j] = 0;
-             }
-         }
-}
+            bool have_valid_message() {
+                int comma_count = 0;
+                for ( int p = 1; p < cmd_string.length(); p++ ) {
+                    if ( cmd_string.charAt(p) == ',' ) {
+                        comma_count += 1;
+                    }
+                }
+                // Did we find the expected 2 commas
+                return ( comma_count == 2 );
+            }
+};
