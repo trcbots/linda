@@ -30,5 +30,5 @@ l.set_current_state_ID(RC_TELEOP_STATE);
 
 void loop()
 {
-  process_command();
+  l.process_command();
 }
