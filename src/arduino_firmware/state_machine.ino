@@ -17,6 +17,8 @@
 #define RC_FAILSAFE_PIN 6
 #define FAILSAFE_LED_PIN 13
 
+#define THROTTLE_SERVO_PIN 9
+
 // If a command has not been recieved within WATCHDOG_TIMEOUT ms, will be switched to HALT state.
 #define WATCHDOG_TIMEOUT 250
 
@@ -29,6 +31,8 @@
 #define REVERSE_GEAR_POSITION 300
 #define NEUTRAL_GEAR_POSITION 500
 #define DRIVE_GEAR_POSITION 700
+
+Servo throtte_servo;
 
 float get_pwm_duty_cycle(pwm_pin)
 {
@@ -80,6 +84,7 @@ class Linda
 
         sabertooth_60A = new ST(9600);
         sabertooth_32A = new ST(9600);
+        throtte_servo.attach(THROTTLE_SERVO_PIN);
 
         brake_motor = new MotorController(sabertooth_32A, 1);
         gear_motor = new MotorController(sabertooth_32A, 2);
@@ -181,7 +186,7 @@ class Linda
         steer_motor->SetTargetPosition(calculate_steer_pos(theta));
         gear_motor->SetTargetPosition(calculate_gear_pos(x_velocity));
         brake_motor->SetTargetPosition(calculate_brake_pos(x_velocity));
-        throttle_motor->SetTargetPosition(calculate_throttle_pos(x_velocity));
+        send_throttle_command(calculate_throttle_pos(x_velocity));
     }
 
     void set_current_state_ID(int newStateID)
@@ -250,5 +255,11 @@ class Linda
         digitalWrite(FAILSAFE_LED_PIN, safeToDrive);
 
         return safeToDrive;
+    }
+
+    void send_throttle_command(int throttle_command)
+    {
+        throttle_command = constrain(throttle_command, 0, 10);
+        throtte_servo.write(throttle_command);
     }
 };
