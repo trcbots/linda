@@ -12,7 +12,7 @@ class MotorController
 {
     
     public:
-      MotorController(*SerialInterface _motor_interface, int _motor_id, int _feedback_pin, double _Kp = 0.5, double _Ki = 0.0, double _Kd = 0.0, int _motor_min_pos, int _motor_max_pos)
+      MotorController(*MotorInterface _motor_interface, int _motor_id, int _feedback_pin, double _Kp = 0.5, double _Ki = 0.0, double _Kd = 0.0, int _motor_min_pos, int _motor_max_pos)
       {
           // init the motor controller here
           this->motor_id = _motor_id;
@@ -52,7 +52,7 @@ class MotorController
         }
 
     private:
-      *SerialInterface motor_interface;
+      *MotorInterface motor_interface;
       int motor_id;
       int feedback_pin;
       double Kp;
