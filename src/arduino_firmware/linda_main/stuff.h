@@ -7,16 +7,26 @@
 #define RC_TELEOP_STATE 4
 #define AI_READY_STATE 5
 
+// PWM input pins from RC Reciever
 #define RC_ENGINE_START_PWM_PIN 2 //RC PIN 8
 #define RC_IGNITION_PWM_PIN 3 //RC PIN 7
-#define ENGINE_START_RELAY_PIN 4 //ENGINE START RELAY OUTPUT
-#define IGNITION_RELAY_PIN 5 //IGNITION RELAY OUTPUT
 #define RC_FAILSAFE_PIN RC_IGNITION_PWM_PIN //SAME AS IGNITION PIN, i.e. RC PIN 7
 #define THROTTLE_PWM_PIN 7 //RC PIN 3
 #define STEERING_PWM_PIN 8 //RC PIN 4
 #define THROTTLE_SERVO_PIN 9 //THROTTLE SERVO MOTOR SIGNAL
 #define RC_GEAR_SWITCH_PIN 12 //RC PIN 6
+
+// Digital output pins
+#define ENGINE_START_RELAY_PIN 4 //ENGINE START RELAY OUTPUT
+#define IGNITION_RELAY_PIN 5 //IGNITION RELAY OUTPUT
 #define FAILSAFE_LED_PIN 13 //OUTPUT TO LED ON THE ARDUINO BOARD
+
+// Analog input pins
+#define BRAKE_ACTUATOR_POSITION_SENSOR_PIN A3
+#define GEAR_ACTUATOR_POSITION_SENSOR_PIN A4
+#define STEERING_ACTUATOR_POSITION_SENSOR_PIN A5
+
+//Used in AI mode only
 #define AUTOSTART_NUM_START_ATTEMPTS 4
 
 // If a command has not been recieved within WATCHDOG_TIMEOUT ms, will be switched to HALT state.
@@ -26,7 +36,7 @@
 // These sensitivity values will need to be changed.
 #define BRAKE_SENSITIVITY 2.0
 #define THROTTLE_SENSITIVITY 2.0
-#define STEER_SENSITIVITY 2.0
+#define STEERING_SENSITIVITY 2.0
 
 #define PARK_GEAR_POSITION 100
 #define REVERSE_GEAR_POSITION 300
@@ -36,12 +46,13 @@
 #define BRAKE_FULLY_ENGAGED_POSITION 100
 #define BRAKE_NOT_ENGAGED_POSITION 1023
 
-#define STEERING_FULL_LEFT 0
+#define STEERING_FULL_LEFT 100
 #define STEERING_FULL_RIGHT 1023
-#define RC_STEERING_DEADZONE 25.0
 
 #define THROTTLE_FULLY_ENGAGED_POSITION 900
 #define THROTTLE_NOT_ENGAGED_POSITION 1023
+
+#define RC_STEERING_DEADZONE 25.0
 #define RC_THROTTLE_DEADZONE 25.0
 
 #define RC_DUTY_THRESH_DRIVE 0.3
@@ -53,16 +64,6 @@
 
 /********************************************************************************/
 
-
-// Software Serial Sample
-// Copyright (c) 2012 Dimension Engineering LLC
-// See license.txt for license details.
-
-// #include <SoftwareSerial.h>
-// #include <SabertoothSimplified.h>
-
-// SoftwareSerial SWSerial(NOT_A_PIN, 11); // RX on no pin (unused), TX on pin 11 (to S1).
-// SabertoothSimplified ST(SWSerial);      // Use SWSerial as the serial port.
 
 class MotorController
 {
@@ -130,12 +131,8 @@ class MotorController
 };
 
 
-float get_pwm_duty_cycle(int pwm_pin)
+float read_pwm_value(int pwm_pin)
 {
-    //unsigned long highTime = pulseIn(pwm_pin, HIGH);
-    //unsigned long lowTime = pulseIn(pwm_pin, LOW);
-    //unsigned long cycleTime = highTime + lowTime;
-    //return (float)highTime / float(cycleTime);
     unsigned long pwm_time = pulseIn(pwm_pin, HIGH);
     return (float)pwm_time;
 }
@@ -146,8 +143,6 @@ class Linda
     Linda()
     {
         pinMode(FAILSAFE_LED_PIN, OUTPUT);
-
-//        set_current_state_ID(HALT_STATE);
         pinMode(ENGINE_START_RELAY_PIN, OUTPUT);
         digitalWrite(ENGINE_START_RELAY_PIN, LOW);
 
@@ -169,9 +164,9 @@ class Linda
         sabertooth_32A = new SabertoothSimplified(Serial2);
         throttle_servo.attach(THROTTLE_SERVO_PIN);
 
-        brake_motor = new MotorController("Brake motor", sabertooth_32A, 1, A3, 100, 1023);
-        gear_motor = new MotorController("Gear motor", sabertooth_32A, 2, A4, 100, 1023);
-        steer_motor = new MotorController("Steering motor", sabertooth_60A, 1, A5, 100, 100);
+        brake_motor = new MotorController("Brake motor", sabertooth_32A, 1, BRAKE_ACTUATOR_POSITION_SENSOR_PIN, BRAKE_FULLY_ENGAGED_POSITION, BRAKE_NOT_ENGAGED_POSITION);
+        gear_motor = new MotorController("Gear motor", sabertooth_32A, 2, GEAR_ACTUATOR_POSITION_SENSOR_PIN, PARK_GEAR_POSITION, DRIVE_GEAR_POSITION);
+        steer_motor = new MotorController("Steering motor", sabertooth_60A, 1, STEERING_ACTUATOR_POSITION_SENSOR_PIN, STEERING_FULL_LEFT, STEERING_FULL_RIGHT);
     }
 
     void startEngine()
@@ -228,7 +223,7 @@ class Linda
     
     int rc_read_gear_pos()
     {
-      double duty = get_pwm_duty_cycle(RC_GEAR_SWITCH_PIN);
+      double duty = read_pwm_value(RC_GEAR_SWITCH_PIN);
       
       if (duty < RC_DUTY_THRESH_REVERSE)
       {
@@ -254,7 +249,7 @@ class Linda
     }
     
     double calculate_steer_pos(double cmd_theta) {
-      return cmd_theta * STEER_SENSITIVITY;
+      return cmd_theta * STEERING_SENSITIVITY;
     }
 
     void process_command(double cmd_x_velocity = 0.0, double cmd_theta = 0.0)
@@ -286,8 +281,8 @@ class Linda
 
         case RC_TELEOP_STATE:
         {
-            x_velocity = get_pwm_duty_cycle(THROTTLE_PWM_PIN);
-            theta = 0.5 - get_pwm_duty_cycle(STEERING_PWM_PIN);
+            x_velocity = read_pwm_value(THROTTLE_PWM_PIN);
+            theta = 0.5 - read_pwm_value(STEERING_PWM_PIN);
            
             Serial.print("X Vel: ");
             Serial.print(x_velocity);
@@ -295,16 +290,16 @@ class Linda
             Serial.print(theta);
             
             //Serial.print(", Ignition_pwm= ");
-            //Serial.print(get_pwm_duty_cycle(RC_IGNITION_PWM_PIN));  
+            //Serial.print(read_pwm_value(RC_IGNITION_PWM_PIN));  
             //Serial.print(", start_pwm: ");
-            //Serial.print(get_pwm_duty_cycle(RC_ENGINE_START_PWM_PIN));  
+            //Serial.print(read_pwm_value(RC_ENGINE_START_PWM_PIN));  
         
-            if (get_pwm_duty_cycle(RC_IGNITION_PWM_PIN) > RC_DUTY_THRESH_IGNITION) {
+            if (read_pwm_value(RC_IGNITION_PWM_PIN) > RC_DUTY_THRESH_IGNITION) {
               digitalWrite(IGNITION_RELAY_PIN, HIGH);
               
               Serial.print(", IGNITION=ON");
               
-              if (get_pwm_duty_cycle(RC_ENGINE_START_PWM_PIN) > RC_DUTY_THRESH_START_ENGINE)
+              if (read_pwm_value(RC_ENGINE_START_PWM_PIN) > RC_DUTY_THRESH_START_ENGINE)
               {
                 digitalWrite(ENGINE_START_RELAY_PIN, HIGH);
                 Serial.print(", STARTER=ON");
@@ -456,10 +451,10 @@ class Linda
     {
         Serial.println("Checking failsafes!");
         bool watchdogValid = ((millis() - lastCommandTimestamp) < WATCHDOG_TIMEOUT);
-        bool rcFailsafeValid = get_pwm_duty_cycle(RC_FAILSAFE_PIN) >= 0.5;
+        bool rcFailsafeValid = read_pwm_value(RC_FAILSAFE_PIN) >= 0.5;
 
         Serial.print("Dutycycle for failsafe=");
-        Serial.print(get_pwm_duty_cycle(RC_FAILSAFE_PIN));
+        Serial.print(read_pwm_value(RC_FAILSAFE_PIN));
         
         Serial.print(", watchdog_valid=");
         Serial.println(watchdogValid);
