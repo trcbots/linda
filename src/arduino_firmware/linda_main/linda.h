@@ -41,12 +41,12 @@
 #define STEERING_SENSITIVITY  1.0
 
 #define BRAKE_MOTOR_MAX_POWER    30
-#define GEAR_MOTOR_MAX_POWER     30
+#define GEAR_MOTOR_MAX_POWER     20
 #define STEERING_MOTOR_MAX_POWER 60
 
-#define PARK_GEAR_POSITION    100
-#define REVERSE_GEAR_POSITION 300
-#define NEUTRAL_GEAR_POSITION 500
+#define PARK_GEAR_POSITION    400
+#define REVERSE_GEAR_POSITION 500
+#define NEUTRAL_GEAR_POSITION 600
 #define DRIVE_GEAR_POSITION   700
 
 #define BRAKE_FULLY_ENGAGED_POSITION  475 // 100
@@ -67,9 +67,9 @@
 #define RC_STEERING_DEADZONE   25.0
 #define RC_THROTTLE_DEADZONE   25.0
 
-#define RC_DUTY_THRESH_DRIVE    0.3
-#define RC_DUTY_THRESH_PARK     0.6
-#define RC_DUTY_THRESH_REVERSE  1.0
+#define RC_DUTY_THRESH_PARK     1100
+#define RC_DUTY_THRESH_DRIVE    1400
+#define RC_DUTY_THRESH_REVERSE  1600
 
 #define RC_DUTY_THRESH_START_ENGINE 1500
 #define RC_DUTY_THRESH_IGNITION     1500
@@ -117,7 +117,7 @@ class Linda
       gear_motor = new MotorController(
                       "Gear motor", sabertooth_32A, 2,
                       GEAR_ACTUATOR_POSITION_SENSOR_PIN,
-                      PARK_GEAR_POSITION, DRIVE_GEAR_POSITION,
+                      DRIVE_GEAR_POSITION, PARK_GEAR_POSITION,
                       GEAR_MOTOR_MAX_POWER);
       
       steer_motor = new MotorController(
@@ -182,18 +182,18 @@ class Linda
     int rc_read_gear_pos()
     {
       double duty = read_pwm_value(RC_GEAR_SWITCH_PIN);
-      
-      if (duty < RC_DUTY_THRESH_REVERSE)
-      {
-        return REVERSE_GEAR_POSITION;
-      }
-      
+
       if (duty < RC_DUTY_THRESH_PARK)
       {
         return PARK_GEAR_POSITION;
       }
       
-      return DRIVE_GEAR_POSITION;
+      if (duty < RC_DUTY_THRESH_DRIVE)
+      {
+        return DRIVE_GEAR_POSITION;
+      }
+      
+      return REVERSE_GEAR_POSITION;
     }
 
     double calculate_throttle_pos(double x_velocity) {
@@ -258,10 +258,6 @@ class Linda
 
         case RC_TELEOP_STATE:
         {
-
-          Serial.print("ADC=");
-          Serial.println(analogRead(STEERING_ACTUATOR_POSITION_SENSOR_PIN));
-          
             x_velocity = read_pwm_value(THROTTLE_PWM_PIN);
             theta      = read_pwm_value(STEERING_PWM_PIN);
            
@@ -344,9 +340,8 @@ class Linda
             if (true)
             {
 
-                /* DISABLE 
                 gear_motor->SetTargetPosition(rc_read_gear_pos());
-                */
+ 
                 Serial.print(", desired_gear_pos=");
                 Serial.println(rc_read_gear_pos());
             }
