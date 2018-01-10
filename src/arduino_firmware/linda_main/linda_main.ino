@@ -1,12 +1,12 @@
 #include <Servo.h>
 #include <SabertoothSimplified.h>
 
-// #include "serial_command.h"
-#include "stuff.h"
+//#include "serial_command.h"
+#include "linda.h"
 
 Linda l;
 
-// SerialCommand sc;
+//SerialCommand sc;
 
 void setup()
 {
@@ -27,12 +27,14 @@ void setup()
 //    l.set_current_state_ID(RC_TELEOP_STATE);
 
 
+l.Init();
 l.set_current_state_ID(RC_TELEOP_STATE);
 
 }
 
 void loop()
 {
+  
   /*
   sc.ReadData();
 
