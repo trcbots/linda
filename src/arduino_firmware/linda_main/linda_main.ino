@@ -1,9 +1,12 @@
 #include <Servo.h>
 #include <SabertoothSimplified.h>
 
+// #include "serial_command.h"
 #include "stuff.h"
 
 Linda l;
+
+// SerialCommand sc;
 
 void setup()
 {
@@ -30,5 +33,19 @@ l.set_current_state_ID(RC_TELEOP_STATE);
 
 void loop()
 {
+  /*
+  sc.ReadData();
+
+  if ( sc.message_type != -1 ) {
+       Serial.print("valid message:");
+       Serial.print(sc.message_type);
+       Serial.print(",");
+       Serial.print(sc.message_data1);
+       Serial.print(",");
+       Serial.println(sc.message_data2);
+       sc.reset();
+    }
+  */
+
   l.process_command();
 }
