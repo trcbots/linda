@@ -30,16 +30,19 @@ void setup()
     */
 
     // Lets go into the Remote Control Teleoperation state!
+    // This control the car based on PWM commands read from the RC reciever
     l.Init();
     l.set_current_state_ID(RC_TELEOP_STATE);
+    
+    // Please note that AI state is currently untested!
 
 }
 
 void loop()
 {
-  
+    
   /*
-  //
+  // If AI mode is used, we read commands from the serial port
   sc.ReadData();
 
   if ( sc.message_type != -1 ) {
@@ -53,5 +56,8 @@ void loop()
     }
   */
 
+
+  // process_command() MUST be called in the main loop
+  // This is where all of the driverless car goodness happens
   l.process_command();
 }

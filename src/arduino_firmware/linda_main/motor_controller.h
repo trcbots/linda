@@ -9,6 +9,12 @@ class MotorController
           
       void SetTargetPosition(double target_pos);
 
+      // FIXME: TEST THIS!!!
+      double GetCurrentPosition(double target_pos);
+      bool isMotorMoving();
+
+      // TODO: Add the option for a callback when the target position is reached???  
+
     private:
       String my_name;
       SabertoothSimplified* motor_interface;
@@ -20,6 +26,7 @@ class MotorController
       int motor_min_pos;
       int motor_max_pos;
       int motor_max_power;
+      bool motor_is_moving;
 };
 
 MotorController::MotorController(String _my_name, SabertoothSimplified* _motor_interface,
@@ -37,17 +44,21 @@ MotorController::MotorController(String _my_name, SabertoothSimplified* _motor_i
     this->Kp              = _Kp;
     this->Ki              = _Ki;
     this->Kd              = _Kd;
+    this->motor_is_moving = false;
   }
 
 void MotorController::SetTargetPosition(double target_pos)
 {
+    // Implementation of a PID controller
+    // TODO add make P and D terms work properly
+
     if (target_pos < motor_min_pos) {
         target_pos = motor_min_pos;
     } else if (target_pos > motor_max_pos) {
         target_pos = motor_max_pos;
     }
-    
-    double current_pos = double(analogRead(feedback_pin));
+
+    double current_pos = this->GetCurrentPosition();
     Serial.print(", current_pos=");
     Serial.print(current_pos);
 
@@ -73,7 +84,22 @@ void MotorController::SetTargetPosition(double target_pos)
 
     if (abs(output) > 10)
     {
-      motor_interface->motor(motor_id, output);
+        motor_is_moving = true;
+        motor_interface->motor(motor_id, output);
+    }
+    else
+    {
+        motor_is_moving = false;
     }
 }
 
+void MotorController::isMotorMoving()
+{
+    // Returns true if a motion command is currently in operation
+    return is_motor_moving();
+}
+
+double MotorController::GetCurrentPosition()
+{
+    return double(analogRead(feedback_pin));
+}

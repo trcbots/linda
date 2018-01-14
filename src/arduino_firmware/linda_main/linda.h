@@ -10,6 +10,7 @@
 #define RC_TELEOP_STATE    4
 #define AI_READY_STATE     5
 
+
 /************************ ARDUINO PIN DEFINITIONS ********************************/
 // PWM input pins from RC Reciever
 #define RC_ENGINE_START_PWM_PIN              2 // RC PIN 8
@@ -29,6 +30,11 @@
 #define BRAKE_ACTUATOR_POSITION_SENSOR_PIN    A3
 #define GEAR_ACTUATOR_POSITION_SENSOR_PIN     A4
 #define STEERING_ACTUATOR_POSITION_SENSOR_PIN A5
+
+// Motor driver Pins (UART Serial)
+// S1 on the sabertooth 2x60A goes to Arduino Mega pin 18 (Serial1 TX)
+// S1 on the sabertooth 2x32A goes to Arduino Mega pin 16 (Serial2 TX)
+
 /*********************************************************************************/
 
 /************************ DRIVE CONTROL DEFINEs **********************************/
@@ -53,6 +59,10 @@
 #define REVERSE_GEAR_POSITION 500
 #define NEUTRAL_GEAR_POSITION 600
 #define DRIVE_GEAR_POSITION   700
+
+// How close should the analog feedback reading be to the actual position, as confirmation that we are actually in the specified gear 
+// An absolute difference threshold
+#define GEAR_FEEDBACK_TOLERENCE 15
 
 // Define the allowable range of motion for the brake actuator
 #define BRAKE_FULLY_ENGAGED_POSITION  475 // 100
@@ -98,11 +108,14 @@
 // If a command from the RC or AI has not been recieved within WATCHDOG_TIMEOUT ms, will be switched to HALT state.
 #define WATCHDOG_TIMEOUT 250
 
+
 class Linda
 {
   public:
     Linda()
     {
+        // Initialise pins
+        // Initialise class member variables
         pinMode(FAILSAFE_LED_PIN, OUTPUT);
         pinMode(ENGINE_START_RELAY_PIN, OUTPUT);
         digitalWrite(ENGINE_START_RELAY_PIN, LOW);
@@ -120,15 +133,23 @@ class Linda
     }
 
     void Init() {
+
+      // Seperate function for Initialising the motor and servo controllers
+      // In Arduino, these init calls do not work from the class constructor
+    
+      // Initialise the servo motor
       throttle_servo.attach(THROTTLE_SERVO_PIN);
       delay(5);
       throttle_servo.write(0);
 
+    
+      // Initialise 9600 baud communication with the Sabertooth Motor Controllers
       Serial1.begin(9600);
       Serial2.begin(9600);
       sabertooth_60A = new SabertoothSimplified(Serial1);
       sabertooth_32A = new SabertoothSimplified(Serial2);
 
+      // Initialise Motor Controllers for Brake, Gear and Steering
       brake_motor = new MotorController(
                       "Brake motor", sabertooth_32A, 1,
                       BRAKE_ACTUATOR_POSITION_SENSOR_PIN,
@@ -150,12 +171,16 @@ class Linda
 
     void startEngine()
     {
+        // Engine AUTOSTART functionallity
+        // Used in AI mode ONLY
+        // This will attempt to start the engine, with multiple attempts on failure to do so
+
         for (int i = 1; i < AUTOSTART_NUM_START_ATTEMPTS; i++)
         {
             Serial.println("Attempting to crank!");
 
             digitalWrite(ENGINE_START_RELAY_PIN, HIGH);
-            delay(2000 + i * 500); // Increase cranking time by 500ms for each attempt
+            delay(650 + i * 150); // Increase cranking time by 500ms for each attempt
             digitalWrite(ENGINE_START_RELAY_PIN, LOW);
 
             // set flag value for now, we have no way of determining the engine state YET
@@ -170,16 +195,27 @@ class Linda
 
     void stopEngine()
     {
+        // Will stop the engine
+
         Serial.println("In stopEngine");
         engine_currently_running = false;
         digitalWrite(IGNITION_RELAY_PIN, LOW);
         //set_current_state_ID(HALT_STATE);
     }
 
-    bool is_engine_running() { return engine_currently_running; } // return flag value for now, we have no way of determining this YET
+    bool is_engine_running()
+    {
+        // return flag value for now, we have no way of determining this YET
+        // Should hook up some kind of sensor and return the digital reading
+
+        return engine_currently_running;
+    }
 
     int calculate_gear_pos(double x_velocity)
     {
+        // USED IN AI MODE ONLY!
+        // Determine what gear we should be in based on the velocity command from the serial port
+
         int gear_position = -1;
         if (getcurrentStateID() >= ENGINE_START_STATE)
         {
@@ -202,6 +238,10 @@ class Linda
     
     int rc_read_gear_pos()
     {
+     
+     // USED IN RC MODE ONLY!
+     // Determine what gear we shold be in based on switch input from the RC reciever 
+
       double duty = read_pwm_value(RC_GEAR_SWITCH_PIN);
 
       if (duty < RC_DUTY_THRESH_PARK)
@@ -218,6 +258,8 @@ class Linda
     }
 
     double calculate_throttle_pos(double x_velocity) {
+      // The throttle pos is calculated from RC commands
+
       x_velocity = (x_velocity - RC_THROTTLE_FULL_REVERSE_POSITION) * (THROTTLE_SERVO_FULL_POSITION - THROTTLE_SERVO_ZERO_POSITION) / 
         (RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION) + THROTTLE_SERVO_ZERO_POSITION;
 
@@ -234,39 +276,54 @@ class Linda
     
     double calculate_brake_pos(double x_velocity)
     {      
+      // Currently not used
+      // FIXME
       return (x_velocity == 0.0) * BRAKE_SENSITIVITY;
     }
     
     double calculate_steer_pos(double cmd_theta) {
-      cmd_theta = (cmd_theta - RC_STEERING_FULL_LEFT_POSITION) * (STEERING_FULL_RIGHT - STEERING_FULL_LEFT) / 
-        (RC_STEERING_FULL_RIGHT_POSITION - RC_STEERING_FULL_LEFT_POSITION) + STEERING_FULL_LEFT;
+        // The throttle pos is calculated from RC commands
+        cmd_theta = (cmd_theta - RC_STEERING_FULL_LEFT_POSITION) * (STEERING_FULL_RIGHT - STEERING_FULL_LEFT) /
+                        (RC_STEERING_FULL_RIGHT_POSITION - RC_STEERING_FULL_LEFT_POSITION) +
+                    STEERING_FULL_LEFT;
 
-      Serial.print("calculate_steer_pos=");
-      Serial.println(cmd_theta * STEERING_SENSITIVITY);
-      
-      return cmd_theta * STEERING_SENSITIVITY;
+        Serial.print("calculate_steer_pos=");
+        Serial.println(cmd_theta * STEERING_SENSITIVITY);
+
+        return cmd_theta * STEERING_SENSITIVITY;
     }
 
     void process_command(double cmd_x_velocity = 0.0, double cmd_theta = 0.0)
     {
+        // This is the main function for the RC car control
+        // It decides what action to do based on the current state and command input
+        // RUNS REPEATEDLY, IT MUST BE CALLED FROM THE MAIN LOOP
+
+        // Note: if in RC_TELEOP_STATE, commanded velocities will be ignored, PWM values will be read instead
+
         lastCommandTimestamp = millis();
         Serial.println("Processing command");
         
         // Will be changed into the HALT state if it is not safe to drive.
         //checkFailsafes();
 
-        // This function is called every time a serial (or RC PWM) command is recieved
+        // State Machine
         switch (currentStateID)
         {
         case HALT_STATE:
+            // We are in HALT_STATE
+
             x_velocity = 0.0;
             theta = cmd_theta;
 
             /* DISABLE 
+            // Lets fully engage the brake
             send_throttle_command(calculate_throttle_pos(x_velocity));
             brake_motor->SetTargetPosition(BRAKE_FULLY_ENGAGED_POSITION);
             steer_motor->SetTargetPosition(calculate_steer_pos(theta));
             */
+
+            // Once we have slowed to a HALT, lets stop the engine  
             if (abs(x_velocity_sensed) <= 0.1)
             {
               /* DISBALE
@@ -279,6 +336,9 @@ class Linda
 
         case RC_TELEOP_STATE:
         {
+            // We are in RC_TELEOP_STATE
+            // Lets act according to the PWM input commands from the RC reciever
+
             x_velocity = read_pwm_value(THROTTLE_PWM_PIN);
             theta      = read_pwm_value(STEERING_PWM_PIN);
            
@@ -295,6 +355,7 @@ class Linda
             Serial.print(", start_pwm: ");
             Serial.print(starter_val);  
         
+            // Ignition and Starter Motor Control
             if (ignition_val > RC_DUTY_THRESH_IGNITION) {
               digitalWrite(IGNITION_RELAY_PIN, HIGH);
               
@@ -321,21 +382,27 @@ class Linda
             Serial.print(", desired_steering=");
             Serial.print(calculate_steer_pos(theta));
             
+            /* the joystick DEADZONEs are DISABLED for now
+                DEADZONEs are implemented purely for operator ergonomics
+
             // Joystick steering DEADZONE
-//            if (abs(theta - float(STEERING_FULL_LEFT + STEERING_FULL_RIGHT) / 2.0 ) < RC_STEERING_DEADZONE)
-//            {
-//              theta = float(STEERING_FULL_LEFT + STEERING_FULL_RIGHT) / 2.0;
-//            }
-            
-            // Joystick throttle DEADZONE
-//            if (abs(x_velocity - float(THROTTLE_FULL_FORWARD_POSITION + THROTTLE_FULL_REVERSE_POSITION) / 2.0 ) < RC_THROTTLE_DEADZONE)
-//            {
-//              x_velocity = float(THROTTLE_FULL_FORWARD_POSITION + THROTTLE_FULL_REVERSE_POSITION)/2.0;
-//            }
+            if (abs(theta - float(STEERING_FULL_LEFT + STEERING_FULL_RIGHT) / 2.0 ) < RC_STEERING_DEADZONE)
+            {
+                theta = float(STEERING_FULL_LEFT + STEERING_FULL_RIGHT) / 2.0;
+            }
+                
+                Joystick throttle DEADZONE
+            if (abs(x_velocity - float(THROTTLE_FULL_FORWARD_POSITION + THROTTLE_FULL_REVERSE_POSITION) / 2.0 ) < RC_THROTTLE_DEADZONE)
+            {
+                x_velocity = float(THROTTLE_FULL_FORWARD_POSITION + THROTTLE_FULL_REVERSE_POSITION)/2.0;
+            }
+            */
 
 
+            // Send command to the steering controller
             steer_motor->SetTargetPosition(calculate_steer_pos(theta));
 
+            // Calculate brake position
             double desired_brake_position = calculate_brake_pos(x_velocity);
             double desired_throttle_position = RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION;
             
@@ -343,21 +410,25 @@ class Linda
             {
               desired_throttle_position = calculate_throttle_pos(x_velocity);
             }
+
             Serial.print(", desired_throttle=");
             Serial.print(desired_throttle_position);
             
             Serial.print(", desired_brake=");
             Serial.print(desired_brake_position);
 
+            // Send command to the brake motor controller
             /* DISABLE 
             brake_motor->SetTargetPosition(desired_brake_position);
             */
             
+            // Send command to the throttle controller
             send_throttle_command(int(desired_throttle_position));
             
    
-// FIXME            
-//           if (abs(x_velocity_sensed) <= 0.1)
+            // Gear shift interlock (prevent shifting at speed)
+            // FIXME            
+            // if (abs(x_velocity_sensed) <= 0.1)
             if (true)
             {
 
@@ -371,12 +442,19 @@ class Linda
             break;
         }
         case IGNITION_STATE:
+            // We don't do anything repetedly in ignition state
+            // (only once: on state change)
             break;
 
         case ENGINE_START_STATE:
+            // We don't do anything repetedly in ignition state
+            // (only once: on state change)
             break;
 
         case AI_READY_STATE:
+            // AI STATE CURRENTLY UNTESTED/UNUSED!
+            // This will use velocity commands from the serial port
+
             x_velocity = cmd_x_velocity;
             theta = cmd_theta;
             
@@ -409,45 +487,59 @@ class Linda
    
     }
 
-    void set_current_state_ID(int newStateID)
+    bool set_current_state_ID(int newStateID)
     {
+        // This function gets called when a change state is requested
+        // Returns true on a successful transition
+
+        // Code blocks within this switch statement are ONLY CALLED ON STATE change
         switch (newStateID)
         {
         case IGNITION_STATE:
+
+            // Only allowed to transistion from HALT STATE to IGNITION STATE
+            // FIXME: add state to MotorController class so that we can request the current and last commanded position
             if (currentStateID == HALT_STATE)
             {
-                Serial.println(":)");
-                if (x_velocity != 0.0)
+                // Ensure that we are in park before engaging ignition
+                if (abs(gear_motor->GetCurrentPosition() - PARK_GEAR_POSITION) > GEAR_FEEDBACK_TOLERENCE)
                 {
-                    return;
-                }
-                else if (ai_enabled)
-                {
-                    return;
-                }
-                else
-                {
-                    current_gear_position = PARK_GEAR_POSITION;
+                    Serial.println('Ignition command received, however the car is not in park. Putting the car into park...');
+
+                    //Put the car into park
+                    // current_gear_position = PARK_GEAR_POSITION;
                     /* DISABLE 
                     gear_motor->SetTargetPosition(current_gear_position);
                     */
-                    
+
+                    return false;
+                }
+                else
+                {
+                    // Once the car is in park, we can start the ignition
+                    Serial.println("Car in park, turning on ignition");
                     digitalWrite(IGNITION_RELAY_PIN, HIGH);
                     main_relay_on = 1;
-                    //Serial.println("Delaying for 5...");
+                    return true;
                 }
+                break;
             }
         case ENGINE_START_STATE:
+
+            // Only transistion to ENGINE_START_STATE if currently in ignition state
             if (currentStateID == IGNITION_STATE)
             {
                 startEngine();
             }
             break;
         case HALT_STATE:
+            // Do nothing on transition into HALT
             break;
         case RC_TELEOP_STATE:
+            // Do nothing on transition into RC_TELEOP
             break;
         case AI_READY_STATE:
+            // Do nothing on transition into AI
             break;
         }
 
@@ -455,21 +547,35 @@ class Linda
         Serial.println(newStateID);
 
         currentStateID = newStateID;
+        return true;
     }
 
     int getcurrentStateID()
     {
+        // Return the ID of the state that we are currently in
         return currentStateID;
     }
 
     float read_pwm_value(int pwm_pin)
     {
+        // Read a value from a PWM input
+        // Used on RC control for all commands, and failsafe
+        // Used on AI control for failsafe ONLY
         unsigned long pwm_time = pulseIn(pwm_pin, HIGH);
         return (float)pwm_time;
     }
 
     bool checkFailsafes()
     {
+        // This function will check all failsafes
+        // If it is not safe to drive: the car will be switched to HALT_STATE
+        // Pin 13 will be ON when it is safe to drive, otherwise OFF.
+
+        // The failsafes include: a watchdog timer (i.e. an automatic shutdown if a command hasn't been recieved within 250ms)
+        // Also included is PWM switch from the RC reciever.
+
+        // Note that: the RC PWM switch failsafe should be connected in series with the emergency stop switch at the rear of the car
+
         Serial.println("Checking failsafes!");
         bool watchdogValid = ((millis() - lastCommandTimestamp) < WATCHDOG_TIMEOUT);
         bool rcFailsafeValid = read_pwm_value(RC_FAILSAFE_PIN) >= 0.5;
@@ -494,6 +600,7 @@ class Linda
 
     void send_throttle_command(int throttle_command)
     {
+        // Send command to the throttle servo
         throttle_command = constrain(throttle_command, 0, 60);
         throttle_servo.write(throttle_command);
     }
