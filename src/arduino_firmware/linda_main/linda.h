@@ -2,6 +2,7 @@
 
 #include "motor_controller.h"
 
+// These are the names of the states that the car can be in
 #define HALT_STATE         0
 #define COAST_STATE        1
 #define IGNITION_STATE     2
@@ -9,6 +10,7 @@
 #define RC_TELEOP_STATE    4
 #define AI_READY_STATE     5
 
+/************************ ARDUINO PIN DEFINITIONS ********************************/
 // PWM input pins from RC Reciever
 #define RC_ENGINE_START_PWM_PIN              2 // RC PIN 8
 #define RC_IGNITION_PWM_PIN                  3 // RC PIN 7
@@ -27,54 +29,68 @@
 #define BRAKE_ACTUATOR_POSITION_SENSOR_PIN    A3
 #define GEAR_ACTUATOR_POSITION_SENSOR_PIN     A4
 #define STEERING_ACTUATOR_POSITION_SENSOR_PIN A5
-
-//Used in AI mode only
-#define AUTOSTART_NUM_START_ATTEMPTS 4
-
-// If a command has not been recieved within WATCHDOG_TIMEOUT ms, will be switched to HALT state.
-#define WATCHDOG_TIMEOUT 250
+/*********************************************************************************/
 
 /************************ DRIVE CONTROL DEFINEs **********************************/
-// These sensitivity values will need to be changed.
+// These parameters adjust how the car will behave.
+
+// They will need to be changed according to the particular vehicle.
+// However, most values provided should be fairly suitable for  configurations.
+
+// Sensitivity values define how responsive the actuators are to a given input
 #define BRAKE_SENSITIVITY     1.0
 #define THROTTLE_SENSITIVITY  1.0
 #define STEERING_SENSITIVITY  1.0
 
+// Max power applies a constraint to the driver output speed.
+// Important note: set these low for testing so you don't destroy anything
 #define BRAKE_MOTOR_MAX_POWER    30
 #define GEAR_MOTOR_MAX_POWER     20
 #define STEERING_MOTOR_MAX_POWER 60
 
+// Gear positions define where the gear actuator has to travel to engage a specified gear
 #define PARK_GEAR_POSITION    400
 #define REVERSE_GEAR_POSITION 500
 #define NEUTRAL_GEAR_POSITION 600
 #define DRIVE_GEAR_POSITION   700
 
+// Define the allowable range of motion for the brake actuator
 #define BRAKE_FULLY_ENGAGED_POSITION  475 // 100
 #define BRAKE_NOT_ENGAGED_POSITION    525 // 1023
 
+// Define the allowable range of motion for the throttle servo actuator
+#define THROTTLE_SERVO_ZERO_POSITION 0
+#define THROTTLE_SERVO_FULL_POSITION 40
+
+// Define the allowable range of motion for the steering actuator
 #define STEERING_FULL_LEFT   50
 #define STEERING_FULL_RIGHT  1080
 
+// Define the limits on Steering PWM input from the RC Reciever
+// In RC Mode: these values will get mapped to STEERING_FULL_LEFT and STEERING_FULL_RIGHT respectively
 #define RC_STEERING_FULL_LEFT_POSITION   1025
 #define RC_STEERING_FULL_RIGHT_POSITION  1975
 
+// Define the limits on Throttle PWM input from the RC Reciever
+// In RC Mode: these values will get mapped to THROTTLE_SERVO_ZERO_POSITION and THROTTLE_SERVO_FULL_POSITION respectively
 #define RC_THROTTLE_FULL_REVERSE_POSITION   1025
 #define RC_THROTTLE_FULL_FORWARD_POSITION   1975
 
-#define THROTTLE_SERVO_ZERO_POSITION   0
-#define THROTTLE_SERVO_FULL_POSITION   40
+// RC stick DEADZONEs are optionally used to adjust the ergonomics of RC control
+// 0.0 values will disable them
+#define RC_STEERING_DEADZONE   0.0
+#define RC_THROTTLE_DEADZONE   0.0
 
-#define RC_STEERING_DEADZONE   25.0
-#define RC_THROTTLE_DEADZONE   25.0
-
+// PWM input thresholds on the RC 3-way switch, these will map to gear positions
 #define RC_DUTY_THRESH_PARK     1100
 #define RC_DUTY_THRESH_DRIVE    1400
 #define RC_DUTY_THRESH_REVERSE  1600
 
-#define RC_DUTY_THRESH_START_ENGINE 1500
+// PWM input thresholds on the ignition and start switches, relays will be activated if the thresholds are reached
 #define RC_DUTY_THRESH_IGNITION     1500
+#define RC_DUTY_THRESH_START_ENGINE 1500
 
-/********************************************************************************/
+/**********************************************************************************/
 
 
 class Linda

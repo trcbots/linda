@@ -13,22 +13,25 @@ void setup()
   
     Serial.begin(115200);
     Serial.println("Initialising!");
-//    pinMode(IGNITION_PIN, OUTPUT);
 
-//    delay(3000);
-//    Serial.println("Ignition!");
-//    l.set_current_state_ID(IGNITION_STATE);
-//
-//    delay(250);
-//    Serial.println("Engine!");
-//    l.set_current_state_ID(ENGINE_START_STATE);
-//
-//    Serial.println("Human Drive!");
-//    l.set_current_state_ID(RC_TELEOP_STATE);
+    /* ENGINE AUTOSTART (disabled for now..., RC operator can do this manually)
+    delay(3000);
 
+    // Turn on the ignition
+    // (i.e. turn the ignition to the ON state, but not start the engine, yet)
+    Serial.println("Ignition!");
+    l.set_current_state_ID(IGNITION_STATE);
 
-l.Init();
-l.set_current_state_ID(RC_TELEOP_STATE);
+    delay(250);
+
+    // Ok, lets start the engine!
+    Serial.println("Engine!");
+    l.set_current_state_ID(ENGINE_START_STATE);
+    */
+
+    // Lets go into the Remote Control Teleoperation state!
+    l.Init();
+    l.set_current_state_ID(RC_TELEOP_STATE);
 
 }
 
@@ -36,6 +39,7 @@ void loop()
 {
   
   /*
+  //
   sc.ReadData();
 
   if ( sc.message_type != -1 ) {
