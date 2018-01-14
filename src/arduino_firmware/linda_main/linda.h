@@ -92,6 +92,11 @@
 
 /**********************************************************************************/
 
+//Used in AI mode only
+#define AUTOSTART_NUM_START_ATTEMPTS 4 + // These parameters adjust how the car will behave.
+
+// If a command from the RC or AI has not been recieved within WATCHDOG_TIMEOUT ms, will be switched to HALT state.
+#define WATCHDOG_TIMEOUT 250
 
 class Linda
 {
