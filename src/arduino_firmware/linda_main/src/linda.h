@@ -51,16 +51,16 @@
 // Max power applies a constraint to the driver output speed.
 // Important note: set these low for testing so you don't destroy anything
 #define BRAKE_MOTOR_MAX_POWER    0
-#define GEAR_MOTOR_MAX_POWER     100
-#define STEERING_MOTOR_MAX_POWER 100
+#define GEAR_MOTOR_MAX_POWER     115
+#define STEERING_MOTOR_MAX_POWER 10
 
 // Gear positions define where the gear actuator has to travel to engage a specified gear
-#define PARK_GEAR_POSITION    735
-#define REVERSE_GEAR_POSITION 400
+#define PARK_GEAR_POSITION    850
+#define REVERSE_GEAR_POSITION 475
 #define NEUTRAL_GEAR_POSITION 400
-#define DRIVE_GEAR_POSITION   50
+#define DRIVE_GEAR_POSITION   10
 
-// How close should the analog feedback reading be to the actual position, as confirmation that we are actually in the specified gear 
+// How close should the analog feedback reading be to the actual position, as confirmation that we are actually in the specified gear
 // An absolute difference threshold
 #define GEAR_FEEDBACK_TOLERENCE 15
 
@@ -137,13 +137,13 @@ class Linda
 
       // Seperate function for Initialising the motor and servo controllers
       // In Arduino, these init calls do not work from the class constructor
-    
+
       // Initialise the servo motor
       throttle_servo.attach(THROTTLE_SERVO_PIN);
       delay(5);
       throttle_servo.write(0);
 
-    
+
       // Initialise 9600 baud communication with the Sabertooth Motor Controllers
       Serial1.begin(9600);
       Serial2.begin(9600);
@@ -162,7 +162,7 @@ class Linda
                       GEAR_ACTUATOR_POSITION_SENSOR_PIN,
                       DRIVE_GEAR_POSITION, PARK_GEAR_POSITION,
                       GEAR_MOTOR_MAX_POWER);
-      
+
       steer_motor = new MotorController(
                       "Steering motor", sabertooth_60A, 1,
                       STEERING_ACTUATOR_POSITION_SENSOR_PIN,
@@ -236,12 +236,12 @@ class Linda
 
         return gear_position;
     }
-    
+
     int rc_read_gear_pos()
     {
-     
+
      // USED IN RC MODE ONLY!
-     // Determine what gear we shold be in based on switch input from the RC reciever 
+     // Determine what gear we shold be in based on switch input from the RC reciever
 
       double duty = read_pwm_value(RC_GEAR_SWITCH_PIN);
       Serial.print("rc remote gear value: 1100,1400,1600: ");
@@ -251,19 +251,19 @@ class Linda
       {
         return PARK_GEAR_POSITION;
       }
-      
+
       if (duty < RC_DUTY_THRESH_REVERSE) // ~1350 < 1400
       {
-        return REVERSE_GEAR_POSITION; 
+        return REVERSE_GEAR_POSITION;
       }
-      
+
       return DRIVE_GEAR_POSITION;
     }
 
     double calculate_throttle_pos(double x_velocity) {
       // The throttle pos is calculated from RC commands
 
-      x_velocity = (x_velocity - RC_THROTTLE_FULL_REVERSE_POSITION) * (THROTTLE_SERVO_FULL_POSITION - THROTTLE_SERVO_ZERO_POSITION) / 
+      x_velocity = (x_velocity - RC_THROTTLE_FULL_REVERSE_POSITION) * (THROTTLE_SERVO_FULL_POSITION - THROTTLE_SERVO_ZERO_POSITION) /
         (RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION) + THROTTLE_SERVO_ZERO_POSITION;
 
       Serial.print("calculate_throttle_pos=");
@@ -273,17 +273,17 @@ class Linda
       {
         return 0;
       }
-      
+
       return x_velocity * THROTTLE_SENSITIVITY;
     }
-    
+
     double calculate_brake_pos(double x_velocity)
-    {      
+    {
       // Currently not used
       // FIXME
       return (x_velocity == 0.0) * BRAKE_SENSITIVITY;
     }
-    
+
     double calculate_steer_pos(double cmd_theta) {
         // The throttle pos is calculated from RC commands
         cmd_theta = (cmd_theta - RC_STEERING_FULL_LEFT_POSITION) * (STEERING_FULL_RIGHT - STEERING_FULL_LEFT) /
@@ -306,7 +306,7 @@ class Linda
 
         lastCommandTimestamp = millis();
         Serial.println("Processing command");
-        
+
         // Will be changed into the HALT state if it is not safe to drive.
         //checkFailsafes();
 
@@ -319,14 +319,14 @@ class Linda
             x_velocity = 0.0;
             theta = cmd_theta;
 
-            /* DISABLE 
+            /* DISABLE
             // Lets fully engage the brake
             send_throttle_command(calculate_throttle_pos(x_velocity));
             brake_motor->SetTargetPosition(BRAKE_FULLY_ENGAGED_POSITION);
             steer_motor->SetTargetPosition(calculate_steer_pos(theta));
             */
 
-            // Once we have slowed to a HALT, lets stop the engine  
+            // Once we have slowed to a HALT, lets stop the engine
             if (abs(x_velocity_sensed) <= 0.1)
             {
               /* DISBALE
@@ -344,7 +344,7 @@ class Linda
 
             x_velocity = read_pwm_value(THROTTLE_PWM_PIN);
             theta      = read_pwm_value(STEERING_PWM_PIN);
-           
+
             Serial.print("X Vel: ");
             Serial.print(x_velocity);
             Serial.print(", Theta: ");
@@ -352,18 +352,18 @@ class Linda
 
             double ignition_val = read_pwm_value(RC_IGNITION_PWM_PIN);
             double starter_val  = read_pwm_value(RC_ENGINE_START_PWM_PIN);
-            
+
             Serial.print(", Ignition_pwm= ");
-            Serial.print(ignition_val);  
+            Serial.print(ignition_val);
             Serial.print(", start_pwm: ");
-            Serial.print(starter_val);  
-        
+            Serial.print(starter_val);
+
             // Ignition and Starter Motor Control
             if (ignition_val > RC_DUTY_THRESH_IGNITION) {
               digitalWrite(IGNITION_RELAY_PIN, HIGH);
-              
+
               Serial.print(", IGNITION=ON");
-              
+
               if (starter_val > RC_DUTY_THRESH_START_ENGINE)
               {
                 digitalWrite(ENGINE_START_RELAY_PIN, HIGH);
@@ -381,10 +381,10 @@ class Linda
               stopEngine();
               return;
             }
-            
+
             Serial.print(", desired_steering=");
             Serial.print(calculate_steer_pos(theta));
-            
+
             /* the joystick DEADZONEs are DISABLED for now
                 DEADZONEs are implemented purely for operator ergonomics
 
@@ -393,7 +393,7 @@ class Linda
             {
                 theta = float(STEERING_FULL_LEFT + STEERING_FULL_RIGHT) / 2.0;
             }
-                
+
                 Joystick throttle DEADZONE
             if (abs(x_velocity - float(THROTTLE_FULL_FORWARD_POSITION + THROTTLE_FULL_REVERSE_POSITION) / 2.0 ) < RC_THROTTLE_DEADZONE)
             {
@@ -408,7 +408,7 @@ class Linda
             // Calculate brake position
             double desired_brake_position = calculate_brake_pos(x_velocity);
             double desired_throttle_position = RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION;
-            
+
             if (desired_brake_position < (BRAKE_FULLY_ENGAGED_POSITION + BRAKE_NOT_ENGAGED_POSITION) / 3.0)
             {
               desired_throttle_position = calculate_throttle_pos(x_velocity);
@@ -416,31 +416,31 @@ class Linda
 
             Serial.print(", desired_throttle=");
             Serial.print(desired_throttle_position);
-            
+
             Serial.print(", desired_brake=");
             Serial.print(desired_brake_position);
 
             // Send command to the brake motor controller
-            /* DISABLE 
+            /* DISABLE
             brake_motor->SetTargetPosition(desired_brake_position);
             */
-            
+
             // Send command to the throttle controller
             send_throttle_command(int(desired_throttle_position));
-            
-   
+
+
             // Gear shift interlock (prevent shifting at speed)
-            // FIXME            
+            // FIXME
             // if (abs(x_velocity_sensed) <= 0.1)
             if (true)
             {
 
                 gear_motor->SetTargetPosition(rc_read_gear_pos());
- 
+
                 Serial.print(", desired_gear_pos=");
                 Serial.println(rc_read_gear_pos());
             }
-            
+
             Serial.println("");
             break;
         }
@@ -460,14 +460,14 @@ class Linda
 
             x_velocity = cmd_x_velocity;
             theta = cmd_theta;
-            
+
             x_velocity = cmd_x_velocity;
             theta = cmd_theta;
 
-            /* DISABLE 
+            /* DISABLE
             steer_motor->SetTargetPosition(calculate_steer_pos(theta));
             */
-            
+
             double desired_brake_position = calculate_brake_pos(x_velocity);
             double desired_throttle_position = RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION;
             if (desired_brake_position < (BRAKE_FULLY_ENGAGED_POSITION + BRAKE_NOT_ENGAGED_POSITION) / 3.0)
@@ -475,19 +475,19 @@ class Linda
               desired_throttle_position = calculate_throttle_pos(x_velocity);
             }
 
-            /* DISABLE 
+            /* DISABLE
             brake_motor->SetTargetPosition(desired_brake_position);
             send_throttle_command(int(desired_throttle_position));
-            
+
             if (abs(x_velocity_sensed) <= 0.1)
             {
               gear_motor->SetTargetPosition(calculate_gear_pos(x_velocity));
             }
             */
-            
+
             break;
         }
-   
+
     }
 
     bool set_current_state_ID(int newStateID)
@@ -511,7 +511,7 @@ class Linda
 
                     //Put the car into park
                     // current_gear_position = PARK_GEAR_POSITION;
-                    /* DISABLE 
+                    /* DISABLE
                     gear_motor->SetTargetPosition(current_gear_position);
                     */
 
@@ -585,7 +585,7 @@ class Linda
 
         Serial.print("Dutycycle for failsafe=");
         Serial.print(read_pwm_value(RC_FAILSAFE_PIN));
-        
+
         Serial.print(", watchdog_valid=");
         Serial.println(watchdogValid);
 
@@ -607,7 +607,7 @@ class Linda
         throttle_command = constrain(throttle_command, 0, 60);
         throttle_servo.write(throttle_command);
     }
-    
+
 private:
     int currentStateID;
     long lastCommandTimestamp;
@@ -619,12 +619,11 @@ private:
     bool main_relay_on;
     bool engine_currently_running;
     Servo throttle_servo;
-    
+
     SabertoothSimplified* sabertooth_60A;
     SabertoothSimplified* sabertooth_32A;
 
     MotorController* brake_motor;
     MotorController* gear_motor;
-    MotorController* steer_motor;  
+    MotorController* steer_motor;
 };
-
