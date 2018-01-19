@@ -50,15 +50,15 @@
 
 // Max power applies a constraint to the driver output speed.
 // Important note: set these low for testing so you don't destroy anything
-#define BRAKE_MOTOR_MAX_POWER    30
-#define GEAR_MOTOR_MAX_POWER     20
-#define STEERING_MOTOR_MAX_POWER 60
+#define BRAKE_MOTOR_MAX_POWER    0
+#define GEAR_MOTOR_MAX_POWER     100
+#define STEERING_MOTOR_MAX_POWER 100
 
 // Gear positions define where the gear actuator has to travel to engage a specified gear
-#define PARK_GEAR_POSITION    400
-#define REVERSE_GEAR_POSITION 500
-#define NEUTRAL_GEAR_POSITION 600
-#define DRIVE_GEAR_POSITION   700
+#define PARK_GEAR_POSITION    735
+#define REVERSE_GEAR_POSITION 400
+#define NEUTRAL_GEAR_POSITION 400
+#define DRIVE_GEAR_POSITION   50
 
 // How close should the analog feedback reading be to the actual position, as confirmation that we are actually in the specified gear 
 // An absolute difference threshold
@@ -244,13 +244,15 @@ class Linda
      // Determine what gear we shold be in based on switch input from the RC reciever 
 
       double duty = read_pwm_value(RC_GEAR_SWITCH_PIN);
+      Serial.print("rc remote gear value: 1100,1400,1600: ");
+      Serial.println(duty);
 
-      if (duty < RC_DUTY_THRESH_PARK)
+      if (duty < RC_DUTY_THRESH_PARK) // ~1050, < 1100
       {
         return PARK_GEAR_POSITION;
       }
       
-      if (duty < RC_DUTY_THRESH_REVERSE)
+      if (duty < RC_DUTY_THRESH_REVERSE) // ~1350 < 1400
       {
         return REVERSE_GEAR_POSITION; 
       }
