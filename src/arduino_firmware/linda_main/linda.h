@@ -103,7 +103,7 @@
 /**********************************************************************************/
 
 //Used in AI mode only
-#define AUTOSTART_NUM_START_ATTEMPTS 4 + // These parameters adjust how the car will behave.
+#define AUTOSTART_NUM_START_ATTEMPTS 4 // These parameters adjust how the car will behave.
 
 // If a command from the RC or AI has not been recieved within WATCHDOG_TIMEOUT ms, will be switched to HALT state.
 #define WATCHDOG_TIMEOUT 250
@@ -175,7 +175,7 @@ class Linda
         // Used in AI mode ONLY
         // This will attempt to start the engine, with multiple attempts on failure to do so
 
-        for (int i = 1; i < AUTOSTART_NUM_START_ATTEMPTS; i++)
+        for (int i = 1 ; i < AUTOSTART_NUM_START_ATTEMPTS ; i++)
         {
             Serial.println("Attempting to crank!");
 

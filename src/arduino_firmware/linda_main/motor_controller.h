@@ -8,10 +8,11 @@ class MotorController
           double _Kp = 0.5, double _Ki = 0.0, double _Kd = 0.0);
           
       void SetTargetPosition(double target_pos);
+      
 
       // FIXME: TEST THIS!!!
-      double GetCurrentPosition(double target_pos);
-      bool isMotorMoving();
+      double GetCurrentPosition();
+      boolean isMotorMoving();
 
       // TODO: Add the option for a callback when the target position is reached???  
 
@@ -45,7 +46,12 @@ MotorController::MotorController(String _my_name, SabertoothSimplified* _motor_i
     this->Ki              = _Ki;
     this->Kd              = _Kd;
     this->motor_is_moving = false;
-  }
+}
+
+double MotorController::GetCurrentPosition()
+{
+    return double(analogRead(feedback_pin));
+}
 
 void MotorController::SetTargetPosition(double target_pos)
 {
@@ -58,7 +64,8 @@ void MotorController::SetTargetPosition(double target_pos)
         target_pos = motor_max_pos;
     }
 
-    double current_pos = this->GetCurrentPosition();
+    //double current_pos = this->GetCurrentPosition();
+    double current_pos = double(analogRead(feedback_pin));
     Serial.print(", current_pos=");
     Serial.print(current_pos);
 
@@ -93,13 +100,11 @@ void MotorController::SetTargetPosition(double target_pos)
     }
 }
 
-void MotorController::isMotorMoving()
+boolean MotorController::isMotorMoving()
 {
     // Returns true if a motion command is currently in operation
-    return is_motor_moving();
+    //return is_motor_moving();
+    return motor_is_moving;
 }
 
-double MotorController::GetCurrentPosition()
-{
-    return double(analogRead(feedback_pin));
-}
+
