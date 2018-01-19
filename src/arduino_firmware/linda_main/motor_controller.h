@@ -50,6 +50,8 @@ MotorController::MotorController(String _my_name, SabertoothSimplified* _motor_i
 
 double MotorController::GetCurrentPosition()
 {
+    Serial.print("potpos = ");
+    Serial.println(analogRead(feedback_pin));
     return double(analogRead(feedback_pin));
 }
 

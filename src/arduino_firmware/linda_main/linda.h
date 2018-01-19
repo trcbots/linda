@@ -93,8 +93,9 @@
 
 // PWM input thresholds on the RC 3-way switch, these will map to gear positions
 #define RC_DUTY_THRESH_PARK     1100
-#define RC_DUTY_THRESH_DRIVE    1400
-#define RC_DUTY_THRESH_REVERSE  1600
+#define RC_DUTY_THRESH_REVERSE  1400
+#define RC_DUTY_THRESH_DRIVE    1600
+
 
 // PWM input thresholds on the ignition and start switches, relays will be activated if the thresholds are reached
 #define RC_DUTY_THRESH_IGNITION     1500
@@ -249,12 +250,12 @@ class Linda
         return PARK_GEAR_POSITION;
       }
       
-      if (duty < RC_DUTY_THRESH_DRIVE)
+      if (duty < RC_DUTY_THRESH_REVERSE)
       {
-        return DRIVE_GEAR_POSITION;
+        return REVERSE_GEAR_POSITION; 
       }
       
-      return REVERSE_GEAR_POSITION;
+      return DRIVE_GEAR_POSITION;
     }
 
     double calculate_throttle_pos(double x_velocity) {
