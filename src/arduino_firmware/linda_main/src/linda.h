@@ -16,8 +16,8 @@
 #define RC_ENGINE_START_PWM_PIN             11 // RC PIN 8
 #define RC_IGNITION_PWM_PIN                 10 // RC PIN 7
 #define RC_FAILSAFE_PIN    RC_IGNITION_PWM_PIN // RC PIN 7
-#define THROTTLE_PWM_PIN                     5 // RC PIN 3
-#define STEERING_PWM_PIN                     6 // RC PIN 4
+#define THROTTLE_PWM_PIN                     5 // RC PIN 1
+#define STEERING_PWM_PIN                     6 // RC PIN 2
 #define THROTTLE_SERVO_PIN                   3 // THROTTLE SERVO MOTOR SIGNAL
 #define RC_GEAR_SWITCH_PIN                   9 // RC PIN 6
 
@@ -50,15 +50,15 @@
 
 // Max power applies a constraint to the driver output speed.
 // Important note: set these low for testing so you don't destroy anything
-#define BRAKE_MOTOR_MAX_POWER    50
-#define GEAR_MOTOR_MAX_POWER     0
-#define STEERING_MOTOR_MAX_POWER 0
+#define BRAKE_MOTOR_MAX_POWER    115
+#define GEAR_MOTOR_MAX_POWER     115
+#define STEERING_MOTOR_MAX_POWER 70
 
 // Gear positions define where the gear actuator has to travel to engage a specified gear
 #define PARK_GEAR_POSITION    850
-#define REVERSE_GEAR_POSITION 495
+#define REVERSE_GEAR_POSITION 500
 #define NEUTRAL_GEAR_POSITION 400
-#define DRIVE_GEAR_POSITION   150
+#define DRIVE_GEAR_POSITION   120
 
 // How close should the analog feedback reading be to the actual position, as confirmation that we are actually in the specified gear
 // An absolute difference threshold
@@ -83,8 +83,13 @@
 
 // Define the limits on Throttle PWM input from the RC Reciever
 // In RC Mode: these values will get mapped to THROTTLE_SERVO_ZERO_POSITION and THROTTLE_SERVO_FULL_POSITION respectively
-#define RC_THROTTLE_FULL_REVERSE_POSITION   1025
+#define RC_THROTTLE_FULL_REVERSE_POSITION   1500
 #define RC_THROTTLE_FULL_FORWARD_POSITION   1975
+
+// Define the limits on Brake PWM input from the RC Receiver
+// In RC Mode: these values will get mapped to BRAKE_SERVO_ZERO_POSITION and BRAKE_SERVO_FULL_POSITION respectively
+#define RC_BRAKE_FULL_REVERSE_POSITION   1500
+#define RC_BRAKE_FULL_FORWARD_POSITION   1025
 
 // RC stick DEADZONEs are optionally used to adjust the ergonomics of RC control
 // 0.0 values will disable them
@@ -265,25 +270,29 @@ class Linda
     double calculate_throttle_pos(double x_velocity) {
       // The throttle pos is calculated from RC commands
 
-      x_velocity = (x_velocity - RC_THROTTLE_FULL_REVERSE_POSITION) * (THROTTLE_SERVO_FULL_POSITION - THROTTLE_SERVO_ZERO_POSITION) /
-        (RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION) + THROTTLE_SERVO_ZERO_POSITION;
-
-      Serial.print("calculate_throttle_pos=");
-      Serial.println(x_velocity * THROTTLE_SENSITIVITY);
-
-      if (x_velocity * THROTTLE_SENSITIVITY < 0)
+      if(x_velocity > 1550)
       {
-        return 0;
+        x_velocity = (x_velocity - RC_THROTTLE_FULL_REVERSE_POSITION) * (THROTTLE_SERVO_FULL_POSITION - THROTTLE_SERVO_ZERO_POSITION) /
+          (RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION) + THROTTLE_SERVO_ZERO_POSITION;
+
+        Serial.print("calculate_throttle_pos=");
+        Serial.println(x_velocity * THROTTLE_SENSITIVITY);
+
+        return x_velocity * THROTTLE_SENSITIVITY;
       }
 
-      return x_velocity * THROTTLE_SENSITIVITY;
+      return 0;
     }
 
     double calculate_brake_pos(double x_velocity)
     {
-      // Currently not used
-      // FIXME
-      return (x_velocity == 0.0) * BRAKE_SENSITIVITY;
+      if(x_velocity < 1450)
+      {
+        x_velocity = BRAKE_NOT_ENGAGED_POSITION - (RC_BRAKE_FULL_REVERSE_POSITION - x_velocity);
+        return x_velocity * BRAKE_SENSITIVITY;
+      }
+
+      return BRAKE_NOT_ENGAGED_POSITION;
     }
 
     double calculate_steer_pos(double cmd_theta) {
@@ -409,18 +418,19 @@ class Linda
 
             // Calculate brake position
             double desired_brake_position = calculate_brake_pos(x_velocity);
-            double desired_throttle_position = RC_THROTTLE_FULL_FORWARD_POSITION - RC_THROTTLE_FULL_REVERSE_POSITION;
 
-            if (desired_brake_position < (BRAKE_FULLY_ENGAGED_POSITION + BRAKE_NOT_ENGAGED_POSITION) / 3.0)
-            {
-              desired_throttle_position = calculate_throttle_pos(x_velocity);
-            }
+            // Calculate throttle position
+            double desired_throttle_position = calculate_throttle_pos(x_velocity);
+
+            // if (desired_brake_position < (BRAKE_FULLY_ENGAGED_POSITION + BRAKE_NOT_ENGAGED_POSITION) / 3.0)
+            // {
+            //   desired_throttle_position = calculate_throttle_pos(x_velocity);
+            // }
 
             Serial.print(", desired_throttle=");
             Serial.print(desired_throttle_position);
 
             Serial.print(", desired_brake=");
-            desired_brake_position = BRAKE_NOT_ENGAGED_POSITION;
             Serial.print(desired_brake_position);
 
             // Send command to the brake motor controller
