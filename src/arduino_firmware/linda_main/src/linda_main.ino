@@ -1,4 +1,5 @@
 #include <SabertoothSimplified.h>
+#include <SoftwareSerial.h>
 
 #include <Servo.h>
 //#include <SabertoothSimplified.h>
@@ -13,7 +14,7 @@ Linda l;
 
 void setup()
 {
-  
+
     Serial.begin(115200);
     Serial.println("Initialising!");
 
@@ -36,14 +37,14 @@ void setup()
     // This control the car based on PWM commands read from the RC reciever
     l.Init();
     l.set_current_state_ID(RC_TELEOP_STATE);
-    
+
     // Please note that AI state is currently untested!
 
 }
 
 void loop()
 {
-    
+
   /*
   // If AI mode is used, we read commands from the serial port
   sc.ReadData();

@@ -8,7 +8,7 @@
 ; Please visit documentation for the other options and examples
 ; http://docs.platformio.org/page/projectconf.html
 
-[env:megaatmega2560]
+[env:uno]
 platform = atmelavr
-board = megaatmega2560
+board = uno
 framework = arduino

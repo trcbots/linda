@@ -13,17 +13,17 @@
 
 /************************ ARDUINO PIN DEFINITIONS ********************************/
 // PWM input pins from RC Reciever
-#define RC_ENGINE_START_PWM_PIN              2 // RC PIN 8
-#define RC_IGNITION_PWM_PIN                  3 // RC PIN 7
+#define RC_ENGINE_START_PWM_PIN             11 // RC PIN 8
+#define RC_IGNITION_PWM_PIN                 10 // RC PIN 7
 #define RC_FAILSAFE_PIN    RC_IGNITION_PWM_PIN // RC PIN 7
-#define THROTTLE_PWM_PIN                     7 // RC PIN 3
-#define STEERING_PWM_PIN                     8 // RC PIN 4
-#define THROTTLE_SERVO_PIN                   9 // THROTTLE SERVO MOTOR SIGNAL
-#define RC_GEAR_SWITCH_PIN                  12 // RC PIN 6
+#define THROTTLE_PWM_PIN                     5 // RC PIN 3
+#define STEERING_PWM_PIN                     6 // RC PIN 4
+#define THROTTLE_SERVO_PIN                   3 // THROTTLE SERVO MOTOR SIGNAL
+#define RC_GEAR_SWITCH_PIN                   9 // RC PIN 6
 
 // Digital output pins
-#define ENGINE_START_RELAY_PIN  4           // ENGINE START RELAY OUTPUT
-#define IGNITION_RELAY_PIN      5           // IGNITION RELAY OUTPUT
+#define ENGINE_START_RELAY_PIN  8           // ENGINE START RELAY OUTPUT
+#define IGNITION_RELAY_PIN      7           // IGNITION RELAY OUTPUT
 #define FAILSAFE_LED_PIN       13           // OUTPUT TO LED ON THE ARDUINO BOARD
 
 // Analog input pins
@@ -32,8 +32,8 @@
 #define STEERING_ACTUATOR_POSITION_SENSOR_PIN A5
 
 // Motor driver Pins (UART Serial)
-// S1 on the sabertooth 2x60A goes to Arduino Mega pin 18 (Serial1 TX)
-// S1 on the sabertooth 2x32A goes to Arduino Mega pin 16 (Serial2 TX)
+// S1 on the sabertooth 2x60A goes to Arduino Mega pin 12 (Serial1 TX)
+// S1 on the sabertooth 2x32A goes to Arduino Mega pin 2 (Serial2 TX)
 
 /*********************************************************************************/
 
@@ -145,10 +145,12 @@ class Linda
 
 
       // Initialise 9600 baud communication with the Sabertooth Motor Controllers
-      Serial1.begin(9600);
-      Serial2.begin(9600);
-      sabertooth_60A = new SabertoothSimplified(Serial1);
-      sabertooth_32A = new SabertoothSimplified(Serial2);
+      SoftwareSerial ST32port(NOT_A_PIN, 2);  // RX on no pin (unused), TX on pin 2 (to S1).
+      SoftwareSerial ST60port(NOT_A_PIN, 12); // RX on no pin (unused), TX on pin 12 (to S1).
+      ST32port.begin(9600);
+      ST60port.begin(9600);
+      sabertooth_60A = new SabertoothSimplified(ST60port);
+      sabertooth_32A = new SabertoothSimplified(ST32port);
 
       // Initialise Motor Controllers for Brake, Gear and Steering
       brake_motor = new MotorController(
