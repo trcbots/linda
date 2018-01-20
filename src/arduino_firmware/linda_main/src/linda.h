@@ -50,23 +50,23 @@
 
 // Max power applies a constraint to the driver output speed.
 // Important note: set these low for testing so you don't destroy anything
-#define BRAKE_MOTOR_MAX_POWER    0
-#define GEAR_MOTOR_MAX_POWER     115
-#define STEERING_MOTOR_MAX_POWER 10
+#define BRAKE_MOTOR_MAX_POWER    50
+#define GEAR_MOTOR_MAX_POWER     0
+#define STEERING_MOTOR_MAX_POWER 0
 
 // Gear positions define where the gear actuator has to travel to engage a specified gear
 #define PARK_GEAR_POSITION    850
-#define REVERSE_GEAR_POSITION 475
+#define REVERSE_GEAR_POSITION 495
 #define NEUTRAL_GEAR_POSITION 400
-#define DRIVE_GEAR_POSITION   10
+#define DRIVE_GEAR_POSITION   150
 
 // How close should the analog feedback reading be to the actual position, as confirmation that we are actually in the specified gear
 // An absolute difference threshold
 #define GEAR_FEEDBACK_TOLERENCE 15
 
 // Define the allowable range of motion for the brake actuator
-#define BRAKE_FULLY_ENGAGED_POSITION  475 // 100
-#define BRAKE_NOT_ENGAGED_POSITION    525 // 1023
+#define BRAKE_FULLY_ENGAGED_POSITION  440 // 100
+#define BRAKE_NOT_ENGAGED_POSITION    800 // 1023
 
 // Define the allowable range of motion for the throttle servo actuator
 #define THROTTLE_SERVO_ZERO_POSITION 0
@@ -418,12 +418,12 @@ class Linda
             Serial.print(desired_throttle_position);
 
             Serial.print(", desired_brake=");
+            desired_brake_position = BRAKE_NOT_ENGAGED_POSITION;
             Serial.print(desired_brake_position);
 
             // Send command to the brake motor controller
-            /* DISABLE
             brake_motor->SetTargetPosition(desired_brake_position);
-            */
+
 
             // Send command to the throttle controller
             send_throttle_command(int(desired_throttle_position));
