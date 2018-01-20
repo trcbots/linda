@@ -52,7 +52,7 @@
 // Important note: set these low for testing so you don't destroy anything
 #define BRAKE_MOTOR_MAX_POWER    115
 #define GEAR_MOTOR_MAX_POWER     115
-#define STEERING_MOTOR_MAX_POWER 70
+#define STEERING_MOTOR_MAX_POWER 100
 
 // Gear positions define where the gear actuator has to travel to engage a specified gear
 #define PARK_GEAR_POSITION    850
