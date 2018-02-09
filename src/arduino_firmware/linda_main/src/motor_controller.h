@@ -6,15 +6,15 @@ class MotorController
       MotorController(String _my_name, SabertoothSimplified* _motor_interface,
           int _motor_id, int _feedback_pin, int _motor_min_pos, int _motor_max_pos, int _motor_max_power,
           double _Kp = 0.5, double _Ki = 0.0, double _Kd = 0.0);
-          
+
       void SetTargetPosition(double target_pos);
-      
+
 
       // FIXME: TEST THIS!!!
       double GetCurrentPosition();
       boolean isMotorMoving();
 
-      // TODO: Add the option for a callback when the target position is reached???  
+      // TODO: Add the option for a callback when the target position is reached???
 
     private:
       String my_name;
@@ -68,8 +68,8 @@ void MotorController::SetTargetPosition(double target_pos)
 
     //double current_pos = this->GetCurrentPosition();
     double current_pos = double(analogRead(feedback_pin));
-    Serial.print(", current_pos=");
-    Serial.print(current_pos);
+    // Serial.print(", current_pos=");
+    // Serial.print(current_pos);
 
     double pTerm = current_pos - target_pos;
     double iTerm = 0.0;
@@ -82,14 +82,14 @@ void MotorController::SetTargetPosition(double target_pos)
       output = motor_max_power;
     }
 
-    Serial.println("");
-    Serial.print(my_name);
-    Serial.print(", motor ID: ");
-    Serial.print(motor_id);
-    Serial.print(", output=");
-    Serial.print(output);
-    Serial.print(", target_pos=");
-    Serial.print(target_pos);
+    // Serial.println("");
+    // Serial.print(my_name);
+    // Serial.print(", motor ID: ");
+    // Serial.print(motor_id);
+    // Serial.print(", output=");
+    // Serial.print(output);
+    // Serial.print(", target_pos=");
+    // Serial.print(target_pos);
 
     if (abs(output) > 10)
     {
@@ -108,5 +108,3 @@ boolean MotorController::isMotorMoving()
     //return is_motor_moving();
     return motor_is_moving;
 }
-
-

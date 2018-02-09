@@ -1,4 +1,6 @@
 
+// #include <SoftwareSerial.h>
+
 #define MAX_CHARS       24
 #define MESSAGE_START 0x23
 #define MESSAGE_END   0x21
@@ -14,12 +16,20 @@
 // char[9] data2
 // char MESSAGE_END '!'
 
+// #define JETSON_SERIAL_TX		NOT_A_PIN
+// #define JETSON_SERIAL_RX		4
+//
+// SoftwareSerial jetson_serial(JETSON_SERIAL_RX, JETSON_SERIAL_TX); // RX, TX
+
 class SerialCommand
 {
 	public:
 		int message_type;
-		double message_data1;
-		double message_data2;
+    unsigned long message_time;  // Time
+    int message_steering; // Steering
+		int message_brakes; // Brake
+		int message_accelerator; // Accelerator
+		int message_gear;	// Gear
 
 		SerialCommand();
 		void ReadData();
@@ -36,10 +46,11 @@ class SerialCommand
 
 SerialCommand::SerialCommand()
 {
-  Serial.begin(115200);
+  //Serial.begin(9600);
+	//jetson_serial.begin(9600);
   Reset();
 }
-    
+
 void SerialCommand::ReadData()
 {
   if (Serial.available() <= 0)
@@ -70,9 +81,12 @@ void SerialCommand::ReadData()
   // validate we have a valid message packet
   if ( ! haveValidMessage() ) {
     Reset();
+    Serial.println("Not valid message");
     return;
   }
 
+
+	// Data1
   message_type = cmd_string.substring(0).toInt();
   bool found = false;
   char p = 2;
@@ -81,7 +95,30 @@ void SerialCommand::ReadData()
     if ( ! ( isDigit( cmd_string.charAt(p) ) || cmd_string.charAt(p) == '.' ) ) {
       // If the char is a comma, then parse the data we have
       if ( cmd_string.charAt(p) == 0x2c ) {
-        message_data1 = cmd_string.substring(2, p).toFloat();
+        message_steering = cmd_string.substring(2, p).toInt();
+        found = true;
+        break;
+      }
+      // otherwise we bail out
+      break;
+    }
+  }
+
+
+  if ( ! found ) {
+    Reset();
+    return;
+  }
+
+	// Data2
+  found = false;
+	int q = p + 1;
+  for (q; q < MAX_CHARS; q++)
+  {
+    if ( ! ( isDigit( cmd_string.charAt(q) ) || cmd_string.charAt(q) == '.' ) ) {
+      // If the char is a comma, then parse the data we have
+      if ( cmd_string.charAt(q) == 0x2c ) {
+        message_accelerator = cmd_string.substring(p + 1, q).toInt();
         found = true;
         break;
       }
@@ -95,13 +132,16 @@ void SerialCommand::ReadData()
     return;
   }
 
+
+	// Data3
   found = false;
-  for (int q = p + 1; q < MAX_CHARS; q++)
+	int r = q + 1;
+  for (r; r < MAX_CHARS; r++)
   {
-    if ( ! ( isDigit( cmd_string.charAt(q) ) || cmd_string.charAt(q) == '.' ) ) {
+    if ( ! ( isDigit( cmd_string.charAt(r) ) || cmd_string.charAt(r) == '.' ) ) {
       // If the char is a comma, then parse the data we have
-      if ( cmd_string.charAt(q) == NULL ) {
-        message_data2 = cmd_string.substring(p + 1, q).toFloat();
+      if ( cmd_string.charAt(r) == 0x2c ) {
+        message_brakes = cmd_string.substring(q + 1, r).toInt();
         found = true;
         break;
       }
@@ -109,20 +149,47 @@ void SerialCommand::ReadData()
       break;
     }
   }
+
+  if ( ! found ) {
+    Reset();
+    return;
+  }
+
+	// Data4
+	found = false;
+	int s = r + 1;
+  for (int s = r + 1; s < MAX_CHARS; s++)
+  {
+    if ( ! ( isDigit( cmd_string.charAt(s) ) || cmd_string.charAt(s) == '.' ) ) {
+      // If the char is a comma, then parse the data we have
+      if ( cmd_string.charAt(s) == NULL ) {
+        message_gear = cmd_string.substring(r + 1, s).toInt();
+        found = true;
+        break;
+      }
+      // otherwise we bail out
+      break;
+    }
+  }
+
+  message_time = millis();
 
   if ( ! found ) {
     Reset();
     return;
   }
 }
-    
+
 void SerialCommand::Reset() {
   cmd_string      = "";
   reading_message = false;
   curr_pos        = 0;
+  message_time    = -1;
   message_type    = -1;
-  message_data1   = -1;
-  message_data2   = -1;
+  message_steering   = -1;
+  message_brakes   = -1;
+  message_accelerator   = -1;
+  message_gear   = -1;
 }
 
 bool SerialCommand::haveValidMessage() {
@@ -133,6 +200,5 @@ bool SerialCommand::haveValidMessage() {
     }
   }
   // Did we find the expected 2 commas
-  return ( comma_count == 2 );
+  return ( comma_count == 4 );
 }
-
